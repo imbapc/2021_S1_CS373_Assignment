@@ -2,6 +2,7 @@ from matplotlib import pyplot
 
 import imageIO.png
 
+
 # this function reads an RGB color png file and returns width, height, as well as pixel arrays for r,g,b
 def readRGBImageToSeparatePixelArrays(input_filename):
     image_reader = imageIO.png.Reader(filename=input_filename)
@@ -41,30 +42,38 @@ def readRGBImageToSeparatePixelArrays(input_filename):
     return (image_width, image_height, pixel_array_r, pixel_array_g, pixel_array_b)
 
 
-
 def main():
     filename = "./images/contrast/krakow.png"
 
     (image_width, image_height, px_array_r, px_array_g, px_array_b) = readRGBImageToSeparatePixelArrays(filename)
 
-    pixel_array = px_array_r
+    pixel_array = [[] for i in range(len(px_array_r))]
+    histogram_dict = {}
+
+    for i in range(len(px_array_r)):
+        for j in range(len(px_array_r[i])):
+            n = round(0.299*px_array_r[i][j]+0.587*px_array_g[i][j]+0.114*px_array_b[i][j])
+            pixel_array[i].append(n)
+            if n not in histogram_dict:
+                histogram_dict[n] = 1
+            else:
+                histogram_dict[n] = histogram_dict[n] + 1
+    print(histogram_dict)
 
     fig1, axs1 = pyplot.subplots(1, 2)
 
     axs1[0].set_title('Input image')
     axs1[0].imshow(pixel_array, cmap='gray')
 
-    #pyplot.show()
+    # pyplot.show()
 
-    nr_bins = 64
-    dummy_histogram = [0.0 for i in range(nr_bins)]
+    dummy_histogram = [histogram_dict[i] for i in range(len(histogram_dict))]
     print(dummy_histogram)
 
     axs1[1].set_title('Histogram')
-    axs1[1].bar(range(nr_bins), dummy_histogram)
+    axs1[1].bar(range(len(histogram_dict)), dummy_histogram)
 
     pyplot.show()
-
 
 
 if __name__ == "__main__":

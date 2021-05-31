@@ -64,7 +64,7 @@ def prepareRGBImageForImshowFromIndividualArrays(r,g,b,w,h):
             row.append(triple)
         rgbImage.append(row)
     return rgbImage
-    
+
 
 # This method takes a greyscale pixel array and writes it into a png file
 def writeGreyscalePixelArraytoPNG(output_filename, pixel_array, image_width, image_height):
@@ -74,7 +74,54 @@ def writeGreyscalePixelArraytoPNG(output_filename, pixel_array, image_width, ima
     writer.write(file, pixel_array)
     file.close()
 
+# This method takes image width, height and pixel array for red, green and blue and write a greyscale pixel array.
+def getGreyscalePixelArrayfromPixelArray(w,h,r,g,b):
+    result_array = createInitializedGreyscalePixelArray(w,h)
+    for i in range(h):
+        for j in range(w):
+            n = round(0.299 * r[i][j] + 0.587 * g[i][j] + 0.114 * b[i][j])
+            result_array[i][j] = n
+    print(result_array)
+    return result_array
 
+# This method takes image width, height and the greyscale and calculate the horizontal edges of the image
+def getHorizontalEdges(w,h,g):
+    result_array = createInitializedGreyscalePixelArray(w, h)
+    for i in range(1,h-1):
+        for j in range(1,w-1):
+            result_array[i][j] = round((g[i-1][j-1]*1+g[i-1][j]*2+g[i-1][j+1]*1-g[i+1][j-1]*1-g[i+1][j]*2-g[i+1][j+1]*1)/8)
+
+    return result_array
+
+# This method takes image width, height and the greyscale and calculate the vertical edges of the image
+def getVerticalEdges(w,h,g):
+    result_array = createInitializedGreyscalePixelArray(w, h)
+    for i in range(1,h-1):
+        for j in range(1,w-1):
+            result_array[i][j] = round((g[i-1][j+1]*1+g[i][j+1]*2+g[i+1][j+1]*1-g[i-1][j-1]*1-g[i][j-1]*2-g[i+1][j-1]*1)/8)
+
+    return result_array
+
+# This method takes image width, height, and both horizontal and vertical edges, return the gradient magnitude of the
+# image
+def getGradientMagnitude(w,h,horizontal,vertical):
+    result_array = createInitializedGreyscalePixelArray(w,h)
+    for i in range(h):
+        for j in range(w):
+            result_array[i][j] = abs(horizontal[i][j])+abs(vertical[i][j])
+
+    return result_array
+
+# This method takes image width, height and the gradient magnitude and apply a Gaussian smooth to it
+def applyGaussianSmooth(w,h,g):
+    result_array = createInitializedGreyscalePixelArray(w,h)
+    for i in range(1,h-1):
+        for j in range(1,w-1):
+           result_array[i][j] = round((g[i-1][j-1]*1+g[i-1][j]*2+g[i-1][j+1]*1+g[i][j-1]*2+g[i][j]*4+g[i][j+1]*2+g[i+1][
+              j-1]*1+ g[i+1][j]*2+g[i+1][j+1]*1)/16)
+#            result_array[i][j] = round((g[i-1][j-1]+g[i-1][j]+g[i-1][j+1]+g[i][j-1]+g[i][j]+g[i][j+1]+g[i+1][j-1]+g[i+1][j]+g[i+1][j+1])/9)
+
+    return result_array
 
 def main():
     filename = "./images/covid19QRCode/poster1small.png"
@@ -83,12 +130,23 @@ def main():
     # each pixel array contains 8 bit integer values between 0 and 255 encoding the color values
     (image_width, image_height, px_array_r, px_array_g, px_array_b) = readRGBImageToSeparatePixelArrays(filename)
 
-    pyplot.imshow(prepareRGBImageForImshowFromIndividualArrays(px_array_r, px_array_g, px_array_b, image_width, image_height))
+    #pyplot.imshow(prepareRGBImageForImshowFromIndividualArrays(px_array_r, px_array_g, px_array_b, image_width, image_height))
+
+    greyscale_array = getGreyscalePixelArrayfromPixelArray(image_width, image_height, px_array_r, px_array_g, px_array_r)
+    writeGreyscalePixelArraytoPNG("poster1small_grey.png", greyscale_array, image_width, image_height)
+    horizontal_edge = getHorizontalEdges(image_width,image_height,greyscale_array)
+    vertical_edge = getVerticalEdges(image_width, image_height, greyscale_array)
+    gradient_magnitude = getGradientMagnitude(image_width,image_height,horizontal_edge,vertical_edge)
+    gaussian_smooth = applyGaussianSmooth(image_width,image_height,gradient_magnitude)
+    for i in range(5):
+        gaussian_smooth = applyGaussianSmooth(image_width,image_height, gaussian_smooth)
+
+    pyplot.imshow(gaussian_smooth, cmap='gray')
 
     # get access to the current pyplot figure
     axes = pyplot.gca()
     # create a 70x50 rectangle that starts at location 10,30, with a line width of 3
-    rect = Rectangle( (10, 30), 70, 50, linewidth=3, edgecolor='g', facecolor='none' )
+    rect = Rectangle( (130, 175), 450, 430, linewidth=3, edgecolor='g', facecolor='none')
     # paint the rectangle over the current plot
     axes.add_patch(rect)
 
