@@ -123,6 +123,19 @@ def applyGaussianSmooth(w,h,g):
 
     return result_array
 
+# This method takes image width, height and a greyscale array and apply thresholding operation with thresholding number 1
+# and return the result array
+def applyThresholdingOperation(w,h,g,t=20):
+    result_array = createInitializedGreyscalePixelArray(w,h)
+    for i in range(h):
+        for j in range(w):
+            if g[i][j] < t:
+                result_array[i][j] = 0
+            else:
+                result_array[i][j] = 255
+
+    return result_array
+
 def main():
     filename = "./images/covid19QRCode/poster1small.png"
 
@@ -138,17 +151,18 @@ def main():
     vertical_edge = getVerticalEdges(image_width, image_height, greyscale_array)
     gradient_magnitude = getGradientMagnitude(image_width,image_height,horizontal_edge,vertical_edge)
     gaussian_smooth = applyGaussianSmooth(image_width,image_height,gradient_magnitude)
-    for i in range(5):
+    for i in range(10):
         gaussian_smooth = applyGaussianSmooth(image_width,image_height, gaussian_smooth)
+    thresholding_operation = applyThresholdingOperation(image_width,image_height,gaussian_smooth)
 
-    pyplot.imshow(gaussian_smooth, cmap='gray')
+    pyplot.imshow(thresholding_operation, cmap='gray')
 
     # get access to the current pyplot figure
     axes = pyplot.gca()
     # create a 70x50 rectangle that starts at location 10,30, with a line width of 3
-    rect = Rectangle( (130, 175), 450, 430, linewidth=3, edgecolor='g', facecolor='none')
+    #rect = Rectangle( (130, 175), 450, 430, linewidth=3, edgecolor='g', facecolor='none')
     # paint the rectangle over the current plot
-    axes.add_patch(rect)
+    #axes.add_patch(rect)
 
     # plot the current figure
     pyplot.show()
