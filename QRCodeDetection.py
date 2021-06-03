@@ -4,6 +4,23 @@ from matplotlib.patches import Rectangle
 
 import imageIO.png
 
+#This is the queue class for Connected Conponent
+class Queue:
+    def __init__(self):
+        self.items = []
+
+    def isEmpty(self):
+        return self.items == []
+
+    def enqueue(self, item):
+        self.items.insert(0,item)
+
+    def dequeue(self):
+        return self.items.pop()
+
+    def size(self):
+        return len(self.items)
+
 
 def createInitializedGreyscalePixelArray(image_width, image_height, initValue = 0):
 
@@ -136,6 +153,88 @@ def applyThresholdingOperation(w,h,g,t=20):
 
     return result_array
 
+#This method takes image width, height and a binary greyscalle array and get all the connnected objects.
+def computeConnectedComponentLabeling(pixel_array, w, h):
+    result_array = createInitializedGreyscalePixelArray(w, h)
+    visited_pixel = createInitializedGreyscalePixelArray(w, h)
+    key = 1
+    result_dict = {}
+    for i in range(h):
+        for j in range(w):
+            if pixel_array[i][j] != 0 and visited_pixel[i][j] == 0:
+                value = pixel_array[i][j]
+                queue = Queue()
+                queue.enqueue([i,j])
+                result_array[i][j] = key
+                visited_pixel[i][j] = 255
+                result_dict[key] = 1
+                while not queue.isEmpty():
+                    index = queue.dequeue()
+                    if index[0]-1 in range(h) and index[1] in range(w):
+                        if pixel_array[index[0]-1][index[1]] != 0 and visited_pixel[index[0]-1][index[1]] == 0:
+                            queue.enqueue([index[0]-1, index[1]])
+                            visited_pixel[index[0]-1][index[1]] = 1
+                            result_array[index[0]-1][index[1]] = key
+                            result_dict[key] = result_dict[key] + 1
+                    if index[0] in range(h) and index[1]-1 in range(w):
+                        if pixel_array[index[0]][index[1]-1] != 0 and visited_pixel[index[0]][index[1]-1] == 0:
+                            queue.enqueue([index[0], index[1]-1])
+                            visited_pixel[index[0]][index[1]-1] = 1
+                            result_array[index[0]][index[1]-1] = key
+                            result_dict[key] = result_dict[key] + 1
+                    if index[0] in range(h) and index[1]+1 in range(w):
+                        if pixel_array[index[0]][index[1]+1] != 0 and visited_pixel[index[0]][index[1]+1] == 0:
+                            queue.enqueue([index[0], index[1]+1])
+                            visited_pixel[index[0]][index[1]+1] = 1
+                            result_array[index[0]][index[1]+1] = key
+                            result_dict[key] = result_dict[key] + 1
+                    if index[0]+1 in range(h) and index[1] in range(w):
+                        if pixel_array[index[0]+1][index[1]] != 0 and visited_pixel[index[0]+1][index[1]] == 0:
+                            queue.enqueue([index[0]+1, index[1]])
+                            visited_pixel[index[0]+1][index[1]] = 1
+                            result_array[index[0]+1][index[1]] = key
+                            result_dict[key] = result_dict[key] + 1
+                key = key + 1
+    return (result_array, result_dict)
+
+#This method defines the biggest object in the picture
+def computeMainObject(pixel_array, array_dict, w, h):
+    max = 0
+    num = 0
+    result_array = createInitializedGreyscalePixelArray(w, h)
+    for key in array_dict:
+        if array_dict[key] > max:
+            max = array_dict[key]
+            num = key
+    for i in range(h):
+        for j in range(w):
+            if pixel_array[i][j] != num:
+                result_array[i][j] = 0
+            else:
+                result_array[i][j] = 255
+    return result_array
+
+#This method record the index of main object edges
+def computeMainObjectEdge(pixel_array, w, h):
+    min_w = w
+    max_w = 0
+    min_h = h
+    max_h = 0
+    for i in range(h):
+        for j in range(w):
+            if pixel_array[i][j] == 255:
+                if i < min_h:
+                    min_h = i
+                if i > max_h:
+                    max_h = i
+                if j < min_w:
+                    min_w = j
+                if j > max_w:
+                    max_w = j
+
+    return (min_w, min_h, max_w-min_w, max_h-min_h)
+
+
 def main():
     filename = "./images/covid19QRCode/poster1small.png"
 
@@ -143,7 +242,7 @@ def main():
     # each pixel array contains 8 bit integer values between 0 and 255 encoding the color values
     (image_width, image_height, px_array_r, px_array_g, px_array_b) = readRGBImageToSeparatePixelArrays(filename)
 
-    #pyplot.imshow(prepareRGBImageForImshowFromIndividualArrays(px_array_r, px_array_g, px_array_b, image_width, image_height))
+    pyplot.imshow(prepareRGBImageForImshowFromIndividualArrays(px_array_r, px_array_g, px_array_b, image_width, image_height))
 
     greyscale_array = getGreyscalePixelArrayfromPixelArray(image_width, image_height, px_array_r, px_array_g, px_array_r)
     writeGreyscalePixelArraytoPNG("poster1small_grey.png", greyscale_array, image_width, image_height)
@@ -154,15 +253,18 @@ def main():
     for i in range(10):
         gaussian_smooth = applyGaussianSmooth(image_width,image_height, gaussian_smooth)
     thresholding_operation = applyThresholdingOperation(image_width,image_height,gaussian_smooth)
+    (connected_array, array_dict) = computeConnectedComponentLabeling(thresholding_operation, image_width, image_height)
+    main_object = computeMainObject(connected_array,array_dict,image_width,image_height)
+    (min_w, min_h, width, height) = computeMainObjectEdge(main_object, image_width, image_height)
 
-    pyplot.imshow(thresholding_operation, cmap='gray')
+    #pyplot.imshow(main_object, cmap='gray')
 
     # get access to the current pyplot figure
     axes = pyplot.gca()
     # create a 70x50 rectangle that starts at location 10,30, with a line width of 3
-    #rect = Rectangle( (130, 175), 450, 430, linewidth=3, edgecolor='g', facecolor='none')
+    rect = Rectangle( (min_w-3, min_h-3), width+6, height+6, linewidth=3, edgecolor='g', facecolor='none')
     # paint the rectangle over the current plot
-    #axes.add_patch(rect)
+    axes.add_patch(rect)
 
     # plot the current figure
     pyplot.show()
