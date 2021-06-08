@@ -1,8 +1,9 @@
+from urllib.parse import urlparse
 
+from PIL import Image
 from matplotlib import pyplot
 from matplotlib.patches import Rectangle, Polygon
 from pyzbar.pyzbar import decode
-import os
 
 import imageIO.png
 
@@ -195,7 +196,7 @@ def applyGaussianSmooth(w,h,g):
 
 # This method takes image width, height and a greyscale array and apply thresholding operation with thresholding number 1
 # and return the result array
-def applyThresholdingOperation(w,h,g,t=20):
+def applyThresholdingOperation(w,h,g,t=30):
     result_array = createInitializedGreyscalePixelArray(w,h)
     for i in range(h):
         for j in range(w):
@@ -267,6 +268,10 @@ def computeVortexes(pixel_array, w, h):
     min_w = w
     max_h = 0
     max_w = 0
+    right = (0, 0)
+    left = (0, 0)
+    top = (0, 0)
+    bottom = (0, 0)
 
     for i in range(h):
         for j in range(w):
@@ -327,8 +332,7 @@ def computeMainObjectEdge(pixel_array, w, h):
 
 
 def main():
-    os.add_dll_directory("D:/project/venv/lib/site-packages/pyzbar")
-    filename = "./images/covid19QRCode/poster1small.png"
+    filename = "./images/covid19QRCode/challenging/shanghai.png"
 
     # we read in the png file, and receive three pixel arrays for red, green and blue components, respectively
     # each pixel array contains 8 bit integer values between 0 and 255 encoding the color values
@@ -348,9 +352,8 @@ def main():
     closing_array = applyClosing(thresholding_operation, image_width, image_height)
     (connected_array, array_dict) = computeConnectedComponentLabeling(closing_array, image_width, image_height)
     main_object = computeMainObject(connected_array,array_dict,image_width,image_height)
-    (min_w, min_h, max_w, max_h) = computeVortexes(main_object, image_width, image_height)
     main_object_edge = computeMainObjectEdge(main_object, image_width, image_height)
-
+    (min_w, min_h, max_w, max_h) = computeVortexes(main_object_edge, image_width, image_height)
     #pyplot.imshow(main_object_edge, cmap='gray')
 
 
@@ -360,8 +363,13 @@ def main():
     rect = Rectangle((min_w-3, min_h-3), (max_w-min_w)+6, (max_h-min_h)+6, linewidth=3, edgecolor='g', facecolor='none')
     # paint the rectangle over the current plot
     axes.add_patch(rect)
-    decode(greyscale_array.tobytes(), image_width, image_height)
+    decode_data = decode(Image.open(filename))
 
+    try:
+        url = urlparse(decode_data[0].data.decode())
+        print(url)
+    except:
+        print("invalid QR code")
     # plot the current figure
     pyplot.show()
 
